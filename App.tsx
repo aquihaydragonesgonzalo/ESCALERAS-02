@@ -1,0 +1,276 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { STEPS_PER_FLIGHT, WorkoutStatus, WorkoutStats } from './types';
+import { StatCard } from './components/StatCard';
+
+// Inline Icons to avoid external dependencies
+const IconStairs = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 6l4 14"/><path d="M12 6l4 14"/><path d="M8 8v12"/><path d="M4 10v10"/></svg>
+);
+
+const IconCheck = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+);
+
+const IconZap = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+);
+
+const IconPlay = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+);
+
+const IconStop = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+);
+
+const IconRefresh = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+);
+
+// Helper to format milliseconds to HH:MM:SS
+const formatTime = (ms: number) => {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  
+  if (hours > 0) {
+    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  }
+  return `${pad(minutes)}:${pad(seconds)}`;
+};
+
+export default function App() {
+  // State
+  const [status, setStatus] = useState<WorkoutStatus>('idle');
+  const [stats, setStats] = useState<WorkoutStats>({
+    flights: 0,
+    twoStepSeries: 0,
+    startTime: null,
+    endTime: null,
+    elapsedTime: 0,
+  });
+
+  const timerRef = useRef<number | null>(null);
+
+  // Timer Logic
+  useEffect(() => {
+    if (status === 'running') {
+      const startTime = Date.now() - stats.elapsedTime;
+      timerRef.current = window.setInterval(() => {
+        setStats(prev => ({
+          ...prev,
+          elapsedTime: Date.now() - startTime
+        }));
+      }, 100); // Update every 100ms
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [status, stats.elapsedTime]);
+
+  // Actions
+  const startWorkout = useCallback(() => {
+    setStatus('running');
+    setStats(prev => ({ ...prev, startTime: Date.now() }));
+  }, []);
+
+  const finishWorkout = useCallback(() => {
+    setStatus('finished');
+    setStats(prev => ({ ...prev, endTime: Date.now() }));
+  }, []);
+
+  const resetWorkout = useCallback(() => {
+    setStatus('idle');
+    setStats({
+      flights: 0,
+      twoStepSeries: 0,
+      startTime: null,
+      endTime: null,
+      elapsedTime: 0,
+    });
+  }, []);
+
+  const addFlight = useCallback(() => {
+    if (status !== 'running') return;
+    setStats(prev => ({ ...prev, flights: prev.flights + 1 }));
+    // Haptic feedback if available
+    if (navigator.vibrate) navigator.vibrate(50);
+  }, [status]);
+
+  const addSeries = useCallback(() => {
+    if (status !== 'running') return;
+    setStats(prev => ({ ...prev, twoStepSeries: prev.twoStepSeries + 1 }));
+    // Haptic feedback
+    if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+  }, [status]);
+
+  // Derived Stats
+  const totalStepsUp = stats.flights * STEPS_PER_FLIGHT;
+  const totalStepsDown = stats.flights * STEPS_PER_FLIGHT; // Assuming you walk down what you walked up
+  const totalSteps = totalStepsUp + totalStepsDown;
+
+  // Render Views
+  if (status === 'finished') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-900 text-white">
+        <div className="w-full max-w-md space-y-8 animate-fade-in">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-emerald-400 mb-2">Entrenamiento Completado</h2>
+            <p className="text-slate-400">¡Gran trabajo! Aquí tienes tu resumen.</p>
+          </div>
+
+          <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 shadow-2xl space-y-6">
+            <div className="text-center pb-6 border-b border-slate-700">
+               <span className="text-slate-400 text-sm uppercase tracking-wide">Tiempo Total</span>
+               <div className="text-5xl font-black font-mono text-white mt-2">
+                 {formatTime(stats.elapsedTime)}
+               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-700/50 p-4 rounded-xl text-center">
+                <div className="text-slate-400 text-xs mb-1">Total Tramos</div>
+                <div className="text-3xl font-bold text-emerald-400">{stats.flights}</div>
+              </div>
+              <div className="bg-slate-700/50 p-4 rounded-xl text-center">
+                <div className="text-slate-400 text-xs mb-1">Series 2x2</div>
+                <div className="text-3xl font-bold text-blue-400">{stats.twoStepSeries}</div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-400">Escalones Subidos</span>
+                <span className="font-bold text-lg text-emerald-200">+{totalStepsUp}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-400">Escalones Bajados</span>
+                <span className="font-bold text-lg text-red-200">-{totalStepsDown}</span>
+              </div>
+              <div className="h-px bg-slate-700 my-2"></div>
+               <div className="flex justify-between items-center text-base">
+                <span className="text-slate-300 font-semibold">Total Movimiento</span>
+                <span className="font-bold text-xl text-white">{totalSteps}</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={resetWorkout}
+            className="w-full py-4 bg-slate-700 hover:bg-slate-600 active:bg-slate-800 rounded-xl font-bold text-white transition-colors flex items-center justify-center gap-2"
+          >
+            <IconRefresh /> Nuevo Entrenamiento
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-900 text-white relative overflow-hidden">
+      {/* Header / Timer */}
+      <header className="pt-8 pb-4 px-6 flex flex-col items-center z-10 bg-slate-900/90 backdrop-blur-sm sticky top-0 border-b border-slate-800">
+        <h1 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Cronómetro</h1>
+        <div className={`text-6xl font-black font-mono tracking-tighter ${status === 'running' ? 'text-white' : 'text-slate-500'}`}>
+          {formatTime(stats.elapsedTime)}
+        </div>
+      </header>
+
+      {/* Main Content Area - Scrollable stats */}
+      <main className="flex-1 p-6 overflow-y-auto space-y-4">
+        
+        {/* Primary Progression Display */}
+        <div className="grid grid-cols-2 gap-4">
+           <StatCard 
+              label="Escalones UP" 
+              value={totalStepsUp} 
+              colorClass="text-emerald-400"
+              subLabel={`(${stats.flights} tramos)`}
+            />
+           <StatCard 
+              label="Escalones DOWN" 
+              value={totalStepsDown} 
+              colorClass="text-red-400"
+              subLabel={`(${stats.flights} tramos)`}
+            />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+           <StatCard 
+              label="Total Tramos" 
+              value={stats.flights} 
+              colorClass="text-white"
+            />
+            <StatCard 
+              label="Series 2x2" 
+              value={stats.twoStepSeries} 
+              colorClass="text-blue-400"
+            />
+        </div>
+
+        {/* Visual Indicator of Activity (Optional aesthetic touch) */}
+        {status === 'idle' && (
+           <div className="mt-8 text-center p-8 border-2 border-dashed border-slate-700 rounded-2xl text-slate-500">
+             <p className="mb-2">Pulsa INICIO para comenzar</p>
+             <div className="flex justify-center opacity-50"><IconStairs /></div>
+           </div>
+        )}
+
+      </main>
+
+      {/* Control Pad - Sticky Bottom */}
+      <footer className="p-6 bg-slate-900 border-t border-slate-800 z-20 pb-10">
+        {status === 'idle' ? (
+          <button
+            onClick={startWorkout}
+            className="w-full py-6 bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all rounded-2xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-3"
+          >
+            <IconPlay className="w-8 h-8" />
+            <span className="text-2xl font-bold uppercase tracking-wide">Iniciar</span>
+          </button>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 h-32">
+              <button
+                onClick={addFlight}
+                className="relative bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 active:scale-95 transition-all rounded-2xl shadow-lg shadow-emerald-900/20 flex flex-col items-center justify-center group"
+              >
+                <div className="absolute top-2 right-2 opacity-50 group-active:opacity-100">
+                    <span className="text-xs font-bold text-emerald-200">+31</span>
+                </div>
+                <IconCheck />
+                <span className="text-lg font-bold mt-1 uppercase">Tramo OK</span>
+              </button>
+
+              <button
+                onClick={addSeries}
+                className="relative bg-blue-600 hover:bg-blue-500 active:bg-blue-700 active:scale-95 transition-all rounded-2xl shadow-lg shadow-blue-900/20 flex flex-col items-center justify-center group"
+              >
+                 <div className="absolute top-2 right-2 opacity-50 group-active:opacity-100">
+                    <span className="text-xs font-bold text-blue-200">+1</span>
+                </div>
+                <IconZap />
+                <span className="text-lg font-bold mt-1 uppercase">Serie 2x2</span>
+              </button>
+            </div>
+
+            <button
+              onClick={finishWorkout}
+              className="w-full py-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-800 border-2 border-slate-700 rounded-xl text-slate-300 font-semibold uppercase tracking-wider flex items-center justify-center gap-2"
+            >
+              <IconStop className="w-5 h-5" /> Terminar Sesión
+            </button>
+          </div>
+        )}
+      </footer>
+    </div>
+  );
+}

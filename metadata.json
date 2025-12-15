@@ -1,0 +1,5 @@
+{
+  "name": "StairMaster Tracker",
+  "description": "A Progressive Web App (PWA) designed to track stair climbing workouts, monitoring flights, steps, and 2-step series intervals.",
+  "requestFramePermissions": []
+}
