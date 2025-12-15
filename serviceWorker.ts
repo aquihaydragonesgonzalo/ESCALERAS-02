@@ -1,8 +1,8 @@
-const CACHE_NAME = 'stairmaster-v1';
+const CACHE_NAME = 'stairmaster-v3';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  './',
+  './index.html',
+  './manifest.json'
 ];
 
 // Install event
