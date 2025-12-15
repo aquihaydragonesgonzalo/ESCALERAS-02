@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stairmaster-v3';
+const CACHE_NAME = 'stairmaster-v5';
 const urlsToCache = [
   './',
   './index.html',

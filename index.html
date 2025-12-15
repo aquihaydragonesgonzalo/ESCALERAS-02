@@ -2,7 +2,8 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!-- Added viewport-fit=cover for full screen on notch devices -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>StairMaster Tracker</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,14 +18,34 @@
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#0f172a" />
     <style>
-      /* Prevent pull-to-refresh on mobile */
-      body {
-        overscroll-behavior-y: contain;
+      /* Fix for mobile height to prevent browser bar issues */
+      html, body {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* Prevent body scroll, handle inside App */
+        background-color: #0f172a;
+        -webkit-tap-highlight-color: transparent;
+      }
+      
+      /* Safe area padding utility */
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .pt-safe {
+        padding-top: env(safe-area-inset-top);
       }
     </style>
   </head>
   <body class="bg-slate-900 text-slate-50 antialiased selection:bg-emerald-500 selection:text-white">
-    <div id="root"></div>
+    <!-- Loading State (Visible until React mounts) -->
+    <div id="root" class="h-full w-full flex items-center justify-center">
+      <div class="flex flex-col items-center animate-pulse">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-emerald-500 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 6l4 14"/><path d="M12 6l4 14"/><path d="M8 8v12"/><path d="M4 10v10"/></svg>
+        <span class="text-slate-400 font-mono text-sm">Cargando App...</span>
+      </div>
+    </div>
     
     <!-- APPLICATION LOGIC INLINED FOR COMPATIBILITY -->
     <script type="text/babel" data-presets="typescript,react">
@@ -33,17 +54,16 @@
       const { createRoot } = ReactDOM;
 
       // --- Types ---
-      // (Interfaces are virtual in TS/Babel, so we just use the logic directly)
       const STEPS_PER_FLIGHT = 31;
 
       // --- Components ---
 
       const StatCard = ({ label, value, subLabel, colorClass = "text-white" }) => {
         return (
-          <div className="bg-slate-800 rounded-2xl p-4 flex flex-col items-center justify-center shadow-lg border border-slate-700">
-            <span className="text-slate-400 text-xs uppercase tracking-wider font-semibold mb-1">{label}</span>
-            <span className={`text-3xl font-bold ${colorClass}`}>{value}</span>
-            {subLabel && <span className="text-slate-500 text-xs mt-1">{subLabel}</span>}
+          <div className="bg-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center shadow-lg border border-slate-700 w-full h-full">
+            <span className="text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider font-semibold mb-1 truncate w-full text-center">{label}</span>
+            <span className={`text-2xl sm:text-3xl font-bold ${colorClass}`}>{value}</span>
+            {subLabel && <span className="text-slate-500 text-[10px] sm:text-xs mt-1">{subLabel}</span>}
           </div>
         );
       };
@@ -54,19 +74,19 @@
       );
 
       const IconCheck = () => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
       );
 
       const IconZap = () => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
       );
 
-      const IconPlay = () => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      const IconPlay = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       );
 
-      const IconStop = () => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+      const IconStop = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
       );
 
       const IconRefresh = () => (
@@ -150,7 +170,12 @@
 
         const addSeries = useCallback(() => {
           if (status !== 'running') return;
-          setStats(prev => ({ ...prev, twoStepSeries: prev.twoStepSeries + 1 }));
+          // MODIFICADO: Ahora suma 1 a 'twoStepSeries' Y TAMBIÉN 1 a 'flights'
+          setStats(prev => ({ 
+            ...prev, 
+            twoStepSeries: prev.twoStepSeries + 1,
+            flights: prev.flights + 1
+          }));
           if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
         }, [status]);
 
@@ -158,13 +183,14 @@
         const totalStepsDown = stats.flights * STEPS_PER_FLIGHT;
         const totalSteps = totalStepsUp + totalStepsDown;
 
+        // --- Render: Finished Screen ---
         if (status === 'finished') {
           return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-900 text-white">
-              <div className="w-full max-w-md space-y-8 animate-fade-in">
+            <div className="h-[100dvh] w-full flex flex-col items-center justify-center p-6 bg-slate-900 text-white overflow-y-auto pt-safe pb-safe">
+              <div className="w-full max-w-md space-y-6 animate-fade-in my-auto">
                 <div className="text-center">
-                  <h2 className="text-3xl font-bold text-emerald-400 mb-2">Entrenamiento Completado</h2>
-                  <p className="text-slate-400">¡Gran trabajo! Aquí tienes tu resumen.</p>
+                  <h2 className="text-3xl font-bold text-emerald-400 mb-2">¡Entrenamiento Fin!</h2>
+                  <p className="text-slate-400">Gran trabajo. Aquí tu resumen.</p>
                 </div>
 
                 <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 shadow-2xl space-y-6">
@@ -205,7 +231,7 @@
 
                 <button
                   onClick={resetWorkout}
-                  className="w-full py-4 bg-slate-700 hover:bg-slate-600 active:bg-slate-800 rounded-xl font-bold text-white transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-slate-700 hover:bg-slate-600 active:bg-slate-800 rounded-xl font-bold text-white transition-colors flex items-center justify-center gap-2 mb-safe"
                 >
                   <IconRefresh /> Nuevo Entrenamiento
                 </button>
@@ -214,17 +240,22 @@
           );
         }
 
+        // --- Render: Main App (Idle or Running) ---
         return (
-          <div className="min-h-screen flex flex-col bg-slate-900 text-white relative overflow-hidden">
-            <header className="pt-8 pb-4 px-6 flex flex-col items-center z-10 bg-slate-900/90 backdrop-blur-sm sticky top-0 border-b border-slate-800">
+          // Use h-[100dvh] to respect mobile browser address bars
+          <div className="h-[100dvh] w-full flex flex-col bg-slate-900 text-white relative overflow-hidden">
+            
+            {/* Header - Sticky */}
+            <header className="pt-safe pt-4 pb-2 px-6 flex flex-col items-center z-10 bg-slate-900/95 backdrop-blur-sm border-b border-slate-800 shrink-0">
               <h1 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Cronómetro</h1>
-              <div className={`text-6xl font-black font-mono tracking-tighter ${status === 'running' ? 'text-white' : 'text-slate-500'}`}>
+              <div className={`text-6xl font-black font-mono tracking-tighter transition-colors ${status === 'running' ? 'text-white' : 'text-slate-500'}`}>
                 {formatTime(stats.elapsedTime)}
               </div>
             </header>
 
-            <main className="flex-1 p-6 overflow-y-auto space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            {/* Main Content - Scrollable */}
+            <main className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-3 overscroll-contain">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                  <StatCard 
                     label="Escalones UP" 
                     value={totalStepsUp} 
@@ -239,7 +270,7 @@
                   />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                  <StatCard 
                     label="Total Tramos" 
                     value={stats.flights} 
@@ -260,38 +291,39 @@
               )}
             </main>
 
-            <footer className="p-6 bg-slate-900 border-t border-slate-800 z-20 pb-10">
+            {/* Footer - Fixed/Sticky Bottom with Safe Area */}
+            <footer className="p-4 sm:p-6 bg-slate-900 border-t border-slate-800 z-20 pb-safe shrink-0">
               {status === 'idle' ? (
                 <button
                   onClick={startWorkout}
-                  className="w-full py-6 bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all rounded-2xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-3"
+                  className="w-full py-6 bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all rounded-2xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-3 mb-2"
                 >
                   <IconPlay className="w-8 h-8" />
                   <span className="text-2xl font-bold uppercase tracking-wide">Iniciar</span>
                 </button>
               ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4 h-32">
+                <div className="space-y-3 mb-2">
+                  <div className="grid grid-cols-2 gap-3 h-32 sm:h-36">
                     <button
                       onClick={addFlight}
-                      className="relative bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 active:scale-95 transition-all rounded-2xl shadow-lg shadow-emerald-900/20 flex flex-col items-center justify-center group"
+                      className="relative bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 active:scale-95 transition-all rounded-2xl shadow-lg shadow-emerald-900/20 flex flex-col items-center justify-center group touch-manipulation"
                     >
                       <div className="absolute top-2 right-2 opacity-50 group-active:opacity-100">
                           <span className="text-xs font-bold text-emerald-200">+31</span>
                       </div>
                       <IconCheck />
-                      <span className="text-lg font-bold mt-1 uppercase">Tramo OK</span>
+                      <span className="text-lg font-bold mt-1 uppercase leading-none">Tramo OK</span>
                     </button>
 
                     <button
                       onClick={addSeries}
-                      className="relative bg-blue-600 hover:bg-blue-500 active:bg-blue-700 active:scale-95 transition-all rounded-2xl shadow-lg shadow-blue-900/20 flex flex-col items-center justify-center group"
+                      className="relative bg-blue-600 hover:bg-blue-500 active:bg-blue-700 active:scale-95 transition-all rounded-2xl shadow-lg shadow-blue-900/20 flex flex-col items-center justify-center group touch-manipulation"
                     >
                        <div className="absolute top-2 right-2 opacity-50 group-active:opacity-100">
                           <span className="text-xs font-bold text-blue-200">+1</span>
                       </div>
                       <IconZap />
-                      <span className="text-lg font-bold mt-1 uppercase">Serie 2x2</span>
+                      <span className="text-lg font-bold mt-1 uppercase leading-none">Serie 2x2</span>
                     </button>
                   </div>
 
@@ -318,15 +350,15 @@
         </React.StrictMode>
       );
 
-      // Service Worker Registration (Basic)
+      // Service Worker Registration
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./serviceWorker.ts').then(
             (registration) => {
-              console.log('ServiceWorker registration successful');
+              console.log('SW Registered');
             },
             (err) => {
-              console.log('ServiceWorker registration failed: ', err);
+              console.log('SW Failed:', err);
             }
           );
         });
